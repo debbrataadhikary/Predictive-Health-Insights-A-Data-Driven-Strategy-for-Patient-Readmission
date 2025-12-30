@@ -76,14 +76,7 @@ END AS visit_group,
         ELSE 'Critical'
     END AS diagnosis_severity,
 
-   -- 11. Final Risk Category (Executive Summary Insights)
-    CASE 
-        WHEN (num_medications + num_lab_procedures + number_diagnoses) > 100 THEN 'High Risk'
-        WHEN (num_medications + num_lab_procedures + number_diagnoses) BETWEEN 60 AND 100 THEN 'Medium Risk'
-        ELSE 'Low Risk'
-    END AS risk_category,
-
-    -- 12. Predictive Readmission Probability Score 
+    -- 11. Predictive Readmission Probability Score 
     ROUND(
       (
         CASE 
@@ -99,6 +92,31 @@ END AS visit_group,
         CASE WHEN (age_70_80 IS TRUE OR age_80_90 IS TRUE) THEN 15 ELSE 0 END +
         CASE WHEN insulin_No IS FALSE THEN 15 ELSE 0 END
       ), 2
-    ) AS readmission_probability_score
-
+    ) AS readmission_probability_score,
+  -- 12. Risk Categorization 
+CASE 
+    WHEN (
+        CASE WHEN (num_medications + num_lab_procedures + number_diagnoses) > 100 THEN 30
+             WHEN (num_medications + num_lab_procedures + number_diagnoses) BETWEEN 60 AND 100 THEN 20
+             ELSE 10 END +
+        CASE WHEN (number_outpatient + number_inpatient + number_emergency) >= 5 THEN 40
+             WHEN (number_outpatient + number_inpatient + number_emergency) BETWEEN 1 AND 4 THEN 20
+             ELSE 0 END +
+        CASE WHEN (age_70_80 IS TRUE OR age_80_90 IS TRUE) THEN 15 ELSE 0 END +
+        CASE WHEN insulin_No IS FALSE THEN 15 ELSE 0 END
+    ) >= 75 THEN '1. Critical High Risk'
+    
+    WHEN (
+        CASE WHEN (num_medications + num_lab_procedures + number_diagnoses) > 100 THEN 30
+             WHEN (num_medications + num_lab_procedures + number_diagnoses) BETWEEN 60 AND 100 THEN 20
+             ELSE 10 END +
+        CASE WHEN (number_outpatient + number_inpatient + number_emergency) >= 5 THEN 40
+             WHEN (number_outpatient + number_inpatient + number_emergency) BETWEEN 1 AND 4 THEN 20
+             ELSE 0 END +
+        CASE WHEN (age_70_80 IS TRUE OR age_80_90 IS TRUE) THEN 15 ELSE 0 END +
+        CASE WHEN insulin_No IS FALSE THEN 15 ELSE 0 END
+    ) BETWEEN 40 AND 74 THEN '2. Moderate Risk'
+    
+    ELSE '3. Low Risk'
+END AS risk_category
 FROM `circular-hybrid-482408-e9.hospital_data.raw_hospital_data`;
